@@ -41,13 +41,89 @@ module fo4
     //    4. Connect the probe_out_o pin to the output of the inverter you want
     //       to measure the propgation delay through.
 
+    parameter inv_num = 3;
+
+    logic or_i, or_o;
+    logic [inv_num-1:0] ring_i, ring_o,
+                dangle1_i, dangle1_o,
+                dangle2_i, dangle2_o,
+                dangle3_i, dangle2_o,
+                load1_i, load1_o,
+                load2_i, load2_o,
+                load3_i, load3_o;
+
+    assign ring_i[0] = or_o;
+    assign or_i = ring_o[inv_num-1];
+
     // Reset Gate (DO NOT REMOVE OR RENAME)
     sky130_fd_sc_hd__or2_1
     reset
         (.A(reset_i)
-        ,.B(/* TODO: SET ME */)
-        ,.X(/* TODO: SET ME */)
+        ,.B(or_i)
+        ,.X(or_o)
         );
+
+    
+
+    genvar i; 
+    generate;
+        for (i = 1; i < inv_num; i++) begin : inverter
+            assign ring_i[i] = ring_o[i-1];
+        end
+    endgenerate
+
+    generate;
+        for (i = 0; i < inv_num; i++) begin : fan_load
+            assign ring_o[i] = dangle1_i[i];
+            assign ring_o[i] = dangle2_i[i];
+            assign ring_o[i] = dangle3_i[i];
+            assign load1_i[i] = dangle1_o[i];
+            assign load2_i[i] = dangle2_o[i];
+            assign load3_i[i] = dangle3_o[i];
+
+            sky130_fd_sc_hd__inv_1
+            std_inv
+                (.Y(ring_o[i])
+                ,.A(ring_i[i])
+                );
+
+            sky130_fd_sc_hd__inv_1
+            fan_inv1
+                (.Y(dangle1_o[i])
+                ,.A(dangle1_i[i])
+                );
+
+            sky130_fd_sc_hd__inv_1
+            fan_inv2
+                (.Y(dangle2_o[i])
+                ,.A(dangle2_i[i])
+                );
+
+            sky130_fd_sc_hd__inv_1
+            fan_inv3
+                (.Y(dangle3_o[i])
+                ,.A(dangle3_i[i])
+                );
+
+            sky130_fd_sc_hd__inv_4
+            load_inv1
+                (.Y(load1_o[i])
+                ,.A(load1_i[i])
+                );
+
+            sky130_fd_sc_hd__inv_4
+            load_inv2
+                (.Y(load2_o[i])
+                ,.A(load2_i[i])
+                );
+
+            sky130_fd_sc_hd__inv_4
+            load_inv3
+                (.Y(load3_o[i])
+                ,.A(load3_i[i])
+                );
+        end
+    endgenerate 
 
 endmodule
 
