@@ -41,19 +41,22 @@ module fo4
     //    4. Connect the probe_out_o pin to the output of the inverter you want
     //       to measure the propgation delay through.
 
-    parameter inv_num = 3;
+    parameter inv_num = 25;
 
     logic or_i, or_o;
     logic [inv_num-1:0] ring_i, ring_o,
                 dangle1_i, dangle1_o,
                 dangle2_i, dangle2_o,
-                dangle3_i, dangle2_o,
+                dangle3_i, dangle3_o,
                 load1_i, load1_o,
                 load2_i, load2_o,
                 load3_i, load3_o;
 
     assign ring_i[0] = or_o;
     assign or_i = ring_o[inv_num-1];
+
+    assign probe_in_o = ring_i[12];
+    assign probe_out_o = ring_o[12];
 
     // Reset Gate (DO NOT REMOVE OR RENAME)
     sky130_fd_sc_hd__or2_1
@@ -74,9 +77,9 @@ module fo4
 
     generate;
         for (i = 0; i < inv_num; i++) begin : fan_load
-            assign ring_o[i] = dangle1_i[i];
-            assign ring_o[i] = dangle2_i[i];
-            assign ring_o[i] = dangle3_i[i];
+            assign dangle1_i[i] = ring_o[i];
+            assign dangle2_i[i] = ring_o[i];
+            assign dangle3_i[i] = ring_o[i];
             assign load1_i[i] = dangle1_o[i];
             assign load2_i[i] = dangle2_o[i];
             assign load3_i[i] = dangle3_o[i];
@@ -126,4 +129,3 @@ module fo4
     endgenerate 
 
 endmodule
-
