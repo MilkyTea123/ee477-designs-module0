@@ -37,12 +37,31 @@ module clk_gen
     //  3. Use the 4-bit select_i to choose between your 16 clock speeds.
     //  4. The final clock should drive the clk_o port.
 
+    parameter start_inv_count = 3;
+    parameter end_inv_count = 2;
+    parameter buff_count = 3;
+
     wire reset_to_reset_bal_n;
+
+    logic [buff_count-1:0] buff;
+    logic [start_inv_count-1:0] start_inv;
+    logic [end_inv_count-2:0] end_inv; // -2 to reserve one for start_inv
+    logic [15:0] mux_i;
+    logic ring_start;
+
+    assign mux_i = { {15{buff[2]}}, start_inv[start_inv_count-1] };
+
+    mux16
+    clk_sel
+        (.data_i(mux_i)
+        ,.select_i(select_i)
+        ,.output_o(clk_o)
+        );
 
     sky130_fd_sc_hd__nor2_1
     reset
         (.A(reset_i)
-        ,.B(/* TODO: connect to the end of the ring oscillator */)
+        ,.B(end_inv[1])
         ,.Y(reset_to_reset_bal_n)
         );
 
@@ -50,8 +69,57 @@ module clk_gen
     reset_bal
         (.A(reset_i)
         ,.B(reset_to_reset_bal_n)
-        ,.Y(/* TODO: connect to the start of the ring oscillator */)
+        ,.Y(ring_start)
+        );
+
+    // buffers
+    sky130_fd_sc_hd__clkbuf_1
+    buff0
+        (.X(buff[0]),
+        ,.A(start_inv[2])
+        );
+
+    sky130_fd_sc_hd__clkbuf_1
+    buff1
+        (.X(buff[1]),
+        ,.A(buff[0])
+        );
+
+    sky130_fd_sc_hd__clkbuf_1
+    buff2
+        (.X(buff[2]),
+        ,.A(buff[1])
+        );
+
+    // ring inverters
+    sky130_fd_sc_hd__clkinv_1
+    end_inv0
+        (.Y(end_inv[0])
+        ,.A(clk_o)
+        );
+
+    sky130_fd_sc_hd__clkinv_1
+    end_inv0
+        (.Y(end_inv[1])
+        ,.A(end_inv[0])
+        );
+
+    sky130_fd_sc_hd__clkinv_1
+    start_inv0
+        (.Y(start_inv[0])
+        ,.A(ring_start)
+        );
+
+    sky130_fd_sc_hd__clkinv_1
+    start_inv1
+        (.Y(start_inv[1])
+        ,.A(start_inv[0])
+        );
+
+    sky130_fd_sc_hd__clkinv_1
+    start_inv2
+        (.Y(start_inv[2])
+        ,.A(start_inv[1])
         );
 
 endmodule
-
