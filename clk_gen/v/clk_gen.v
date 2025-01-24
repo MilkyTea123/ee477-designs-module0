@@ -37,19 +37,13 @@ module clk_gen
     //  3. Use the 4-bit select_i to choose between your 16 clock speeds.
     //  4. The final clock should drive the clk_o port.
 
-    parameter start_inv_count = 3;
-    parameter end_inv_count = 2;
-    parameter buff_count = 3;
-
     wire reset_to_reset_bal_n;
 
-    logic [buff_count-1:0] buff;
-    logic [start_inv_count-1:0] start_inv;
-    logic [end_inv_count-2:0] end_inv; // -2 to reserve one for start_inv
+    logic [14:0] buff;
     logic [15:0] mux_i;
-    logic ring_start;
+    logic ring_start, inv;
 
-    assign mux_i = { {15{buff[2]}}, start_inv[start_inv_count-1] };
+    assign mux_i = { buff, inv };
 
     mux16
     clk_sel
@@ -61,7 +55,7 @@ module clk_gen
     sky130_fd_sc_hd__nor2_1
     reset
         (.A(reset_i)
-        ,.B(end_inv[1])
+        ,.B(clk_o)
         ,.Y(reset_to_reset_bal_n)
         );
 
@@ -72,54 +66,213 @@ module clk_gen
         ,.Y(ring_start)
         );
 
-    // buffers
-    sky130_fd_sc_hd__clkbuf_1
-    buff0
-        (.X(buff[0]),
-        ,.A(start_inv[2])
-        );
-
-    sky130_fd_sc_hd__clkbuf_1
-    buff1
-        (.X(buff[1]),
-        ,.A(buff[0])
-        );
-
-    sky130_fd_sc_hd__clkbuf_1
-    buff2
-        (.X(buff[2]),
-        ,.A(buff[1])
-        );
-
-    // ring inverters
+    // inverter (2 in mux)
     sky130_fd_sc_hd__clkinv_1
-    end_inv0
-        (.Y(end_inv[0])
-        ,.A(clk_o)
-        );
-
-    sky130_fd_sc_hd__clkinv_1
-    end_inv0
-        (.Y(end_inv[1])
-        ,.A(end_inv[0])
-        );
-
-    sky130_fd_sc_hd__clkinv_1
-    start_inv0
-        (.Y(start_inv[0])
+    ring_inv
+        (.Y(inv)
         ,.A(ring_start)
         );
 
-    sky130_fd_sc_hd__clkinv_1
-    start_inv1
-        (.Y(start_inv[1])
-        ,.A(start_inv[0])
+    sky130_fd_sc_hd__clkbuf_2
+    buff0
+    (.X(buff[0])
+    ,.A(inv)
+    );
+
+    sky130_fd_sc_hd__clkbuf_2
+    buff1
+    (.X(buff[1])
+    ,.A(buff[0])
+    );
+
+
+    sky130_fd_sc_hd__clkbuf_2
+    buff2
+    (.X(buff[2])
+    ,.A(buff[1])
+    );
+
+
+    sky130_fd_sc_hd__clkbuf_2
+    buff3
+    (.X(buff[3])
+    ,.A(buff[2])
+    );
+
+
+    sky130_fd_sc_hd__clkbuf_2
+    buff4
+    (.X(buff[4])
+    ,.A(buff[3])
+    );
+
+
+    sky130_fd_sc_hd__clkbuf_2
+    buff5
+    (.X(buff[5])
+    ,.A(buff[4])
+    );
+
+
+    sky130_fd_sc_hd__clkbuf_2
+    buff6
+    (.X(buff[6])
+    ,.A(buff[5])
+    );
+
+
+    sky130_fd_sc_hd__clkbuf_2
+    buff7
+    (.X(buff[7])
+    ,.A(buff[6])
+    );
+
+
+    sky130_fd_sc_hd__clkbuf_2
+    buff8
+    (.X(buff[8])
+    ,.A(buff[7])
+    );
+
+
+    sky130_fd_sc_hd__clkbuf_2
+    buff9
+    (.X(buff[9])
+    ,.A(buff[8])
+    );
+
+
+    sky130_fd_sc_hd__clkbuf_2
+    buff10
+    (.X(buff[10])
+    ,.A(buff[9])
+    );
+
+
+    sky130_fd_sc_hd__clkbuf_2
+    buff11
+    (.X(buff[11])
+    ,.A(buff[10])
+    );
+
+
+    sky130_fd_sc_hd__clkbuf_2
+    buff12
+    (.X(buff[12])
+    ,.A(buff[11])
+    );
+
+
+    sky130_fd_sc_hd__clkbuf_2
+    buff13
+    (.X(buff[13])
+    ,.A(buff[12])
+    );
+
+
+    sky130_fd_sc_hd__clkbuf_2
+    buff14
+    (.X(buff[14])
+    ,.A(buff[13])
+    );
+
+endmodule
+
+module mux16 
+    ( input logic [15:0] data_i
+    , input logic [3:0] select_i
+    , output logic output_o
+    );
+
+    // main meaning data going into main final mux
+    logic [3:0] inter, inter_inv;
+    logic main_mux_o;
+
+    // last layer of muxes
+    sky130_fd_sc_hd__mux4_2
+    main_mux
+        (.X(main_mux_o)
+        ,.A0(inter_inv[0])
+        ,.A1(inter_inv[1])
+        ,.A2(inter_inv[2])
+        ,.A3(inter_inv[3])
+        ,.S0(select_i[2])
+        ,.S1(select_i[3])
         );
 
     sky130_fd_sc_hd__clkinv_1
-    start_inv2
-        (.Y(start_inv[2])
-        ,.A(start_inv[1])
+    main_inv
+        (.Y(output_o)
+        ,.A(main_mux_o)
+        );
+
+    // first layer of muxes
+    sky130_fd_sc_hd__mux4_2
+    inter_mux0
+        (.X(inter[0])
+        ,.A0(data_i[0])
+        ,.A1(data_i[1])
+        ,.A2(data_i[2])
+        ,.A3(data_i[3])
+        ,.S0(select_i[0])
+        ,.S1(select_i[1])
+        );
+    
+    sky130_fd_sc_hd__clkinv_1
+    inter_inv0
+        (.Y(inter_inv[0])
+        ,.A(inter[0])
+        );
+
+    sky130_fd_sc_hd__mux4_2
+    inter_mux1
+        (.X(inter[1])
+        ,.A0(data_i[4])
+        ,.A1(data_i[5])
+        ,.A2(data_i[6])
+        ,.A3(data_i[7])
+        ,.S0(select_i[0])
+        ,.S1(select_i[1])
+        );
+
+    sky130_fd_sc_hd__clkinv_1
+    inter_inv1
+        (.Y(inter_inv[1])
+        ,.A(inter[1])
+        );
+
+    sky130_fd_sc_hd__mux4_2
+    inter_mux2
+        (.X(inter[2])
+        ,.A0(data_i[8])
+        ,.A1(data_i[9])
+        ,.A2(data_i[10])
+        ,.A3(data_i[11])
+        ,.S0(select_i[0])
+        ,.S1(select_i[1])
+        );
+
+    sky130_fd_sc_hd__clkinv_1
+    inter_inv2
+        (.Y(inter_inv[2])
+        ,.A(inter[2])
+        );
+
+    sky130_fd_sc_hd__mux4_2
+    inter_mux3
+        (.X(inter[3])
+        ,.A0(data_i[12])
+        ,.A1(data_i[13])
+        ,.A2(data_i[14])
+        ,.A3(data_i[15])
+        ,.S0(select_i[0])
+        ,.S1(select_i[1])
+        );
+
+    sky130_fd_sc_hd__clkinv_1
+    inter_inv3
+        (.Y(inter_inv[3])
+        ,.A(inter[3])
         );
 
 endmodule

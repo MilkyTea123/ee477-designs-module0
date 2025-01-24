@@ -1,8 +1,9 @@
-// 
-//  Clk Gen Module -- Students should implement their tunable clock generator
-//  circuit here! The input and output port list has been created for you. Do
-//  not modify the port list, this will break the rest of the lab :)
-// 
+//  FO4 Module -- Students should implement the FO4 circuit that they see in
+//  the Module 0 handout. Note that we already have a 2-input OR gate
+//  instantiated in this design. This both serves as an example of how a gate
+//  is instantiated as well as implements a reset which allows us to put the
+//  ring oscillator into a known state for digital simulations.
+//
 //  First, you must figure out what logic gates are available to us in the
 //  standard cell library. The best place to figure this out is the liberty
 //  file which can be found at:
@@ -21,170 +22,131 @@
 //  supply nets within this verilog file). Inside the pin definition will be
 //  the "direction " to determine if it is an input or output of the gate.
 //  Output pins will also have a "function " which is the boolean logic
-//  expression for the gate. Timing information for each pin can also be found
-//  within the pin definitions, please read the module - handout for more
-//  information.
+//  expression for the gate.
 //
-module clk_gen
-    ( input  wire       reset_i
-    , input  wire [3:0] select_i
-    , output wire       clk_o
+
+module fo4
+    ( input  wire reset_i       // reset input
+    , output wire probe_in_o    // first output probe
+    , output wire probe_out_o   // second output probe
     );
 
-    // TODO: Implement the clock generator below! Make sure that:
-    //  1. The ring ends at the B pin of the reset NOR gate below.
-    //  2. The ring begins with the X pin of the reset_bal NOR gate below.
-    //  3. Use the 4-bit select_i to choose between your 16 clock speeds.
-    //  4. The final clock should drive the clk_o port.
+    // TODO: Implement the FO4 ring below! Make sure that:
+    //    1. The ring ends at the B pin of the reset OR gate below.
+    //    2. The ring begins with the X pin of the reset OR gate below.
+    //    3. Connect the probe_in_o pin to the input of the inverter you want
+    //       to measure the propgation delay through. (NOTE: you should choose
+    //       an inverter several stages away from the reset gate, so the fo4
+    //       will not be influenced by it.)
+    //    4. Connect the probe_out_o pin to the output of the inverter you want
+    //       to measure the propgation delay through.
 
-    parameter inv_count = 5;
-    parameter buff_count = 3;
+    logic [7:0] ring_inv;
 
-    wire reset_to_reset_bal_n;
+    assign probe_in_o = ring_inv[3];
+    assign probe_out_o = ring_inv[4];
 
-     [buff_count-1:0] buff;
-    logic [inv_count-1:0] inv;
-    logic [15:0] mux_i;
-
-    assign mux_i = { {15{buff[2]}}, inv[inv_count-1] };
-
-    mux16
-    clk_sel
-        (.data_i(mux_i)
-        ,.select_i(select_i)
-        ,.output_o(clk_o)
-        );
-
-    sky130_fd_sc_hd__nor2_1
+    // Reset Gate (DO NOT REMOVE OR RENAME)
+    sky130_fd_sc_hd__or2_1
     reset
         (.A(reset_i)
-        ,.B(clk_o)
-        ,.Y(reset_to_reset_bal_n)
+        ,.B(ring_inv[7])
+        ,.X(ring_inv[0])
         );
 
-    sky130_fd_sc_hd__nor2_1
-    reset_bal
-        (.A(reset_i)
-        ,.B(reset_to_reset_bal_n)
-        ,.Y(ring_start)
+    inv_branch
+    ring_inv0
+        (.a_i(ring_inv[0])
+        ,.y_o(ring_inv[1])
         );
 
-    // buffers
-    sky130_fd_sc_hd__clkbuf_1
-    buff0
-        (.X(buff[0])
-        ,.A(inv[inv_count-1])
+    inv_branch
+    ring_inv1
+        (.a_i(ring_inv[1])
+        ,.y_o(ring_inv[2])
         );
 
-    sky130_fd_sc_hd__clkbuf_1
-    buff1
-        (.X(buff[1])
-        ,.A(buff[0])
+    inv_branch
+    ring_inv2
+        (.a_i(ring_inv[2])
+        ,.y_o(ring_inv[3])
         );
 
-    sky130_fd_sc_hd__clkbuf_1
-    buff2
-        (.X(buff[2])
-        ,.A(buff[1])
+    inv_branch
+    ring_inv3
+        (.a_i(ring_inv[3])
+        ,.y_o(ring_inv[4])
         );
 
-    // ring inverters
-    sky130_fd_sc_hd__clkinv_1
-    inv0
-        (.Y(inv[0])
-        ,.A(ring_start)
+    inv_branch
+    ring_inv4
+        (.a_i(ring_inv[4])
+        ,.y_o(ring_inv[5])
         );
 
-    sky130_fd_sc_hd__clkinv_1
-    inv1
-        (.Y(inv[1])
-        ,.A(inv[0])
+    inv_branch
+    ring_inv5
+        (.a_i(ring_inv[5])
+        ,.y_o(ring_inv[6])
         );
 
-    sky130_fd_sc_hd__clkinv_1
-    inv2
-        (.Y(inv[2])
-        ,.A(inv[1])
-        );
-
-    sky130_fd_sc_hd__clkinv_1
-    inv3
-        (.Y(inv[3])
-        ,.A(inv[2])
-        );
-
-    sky130_fd_sc_hd__clkinv_1
-    inv4
-        (.Y(inv[4])
-        ,.A(inv[3])
+    inv_branch
+    ring_inv6
+        (.a_i(ring_inv[6])
+        ,.y_o(ring_inv[7])
         );
 
 endmodule
 
-module mux16 
-    ( input logic [15:0] data_i
-    , input logic [3:0] select_i
-    , output logic output_o
+
+module inv_branch
+    ( input logic a_i
+    , output logic y_o
     );
 
-    // main meaning data going into main final mux
-    logic [3:0] inter;
+    logic [3:0] dangle_i, dangle_o;
 
-    // last layer of muxes
-    sky130_fd_sc_hd__mux4_1
-    main_mux
-        (.X(output_o)
-        ,.A0(inter[0])
-        ,.A1(inter[1])
-        ,.A2(inter[2])
-        ,.A3(inter[3])
-        ,.S0(select_i[2])
-        ,.S1(select_i[3])
+    sky130_fd_sc_hd__inv_1
+    main_inv
+        (.Y(y_o)
+        ,.A(a_i)
         );
 
-    // first layer of muxes
-    sky130_fd_sc_hd__mux4_1
-    inter_mux0
-        (.X(inter[0])
-        ,.A0(data_i[0])
-        ,.A1(data_i[1])
-        ,.A2(data_i[2])
-        ,.A3(data_i[3])
-        ,.S0(select_i[0])
-        ,.S1(select_i[1])
+    // fan out inverters
+    sky130_fd_sc_hd__inv_1
+    fan_inv0 
+        (.Y(dangle_i[0])
+        ,.A(y_o)
         );
 
-    sky130_fd_sc_hd__mux4_1
-    inter_mux1
-        (.X(inter[1])
-        ,.A0(data_i[4])
-        ,.A1(data_i[5])
-        ,.A2(data_i[6])
-        ,.A3(data_i[7])
-        ,.S0(select_i[0])
-        ,.S1(select_i[1])
+    sky130_fd_sc_hd__inv_1
+    fan_inv1 
+        (.Y(dangle_i[1])
+        ,.A(y_o)
         );
 
-    sky130_fd_sc_hd__mux4_1
-    inter_mux2
-        (.X(inter[2])
-        ,.A0(data_i[8])
-        ,.A1(data_i[9])
-        ,.A2(data_i[10])
-        ,.A3(data_i[11])
-        ,.S0(select_i[0])
-        ,.S1(select_i[1])
+    sky130_fd_sc_hd__inv_1
+    fan_inv2 
+        (.Y(dangle_i[2])
+        ,.A(y_o)
         );
 
-    sky130_fd_sc_hd__mux4_1
-    inter_mux3
-        (.X(inter[3])
-        ,.A0(data_i[12])
-        ,.A1(data_i[13])
-        ,.A2(data_i[14])
-        ,.A3(data_i[15])
-        ,.S0(select_i[0])
-        ,.S1(select_i[1])
+    // 4x drive inverters
+    sky130_fd_sc_hd__inv_4
+    load_inv0 
+        (.Y(dangle_o[0])
+        ,.A(dangle_i[0])
         );
 
+    sky130_fd_sc_hd__inv_4
+    load_inv1 
+        (.Y(dangle_o[1])
+        ,.A(dangle_i[1])
+        );
+
+    sky130_fd_sc_hd__inv_4
+    load_inv2 
+        (.Y(dangle_o[2])
+        ,.A(dangle_i[2])
+        );
 endmodule
